@@ -1,5 +1,5 @@
-use rxrust::prelude::*;
 use std::{cell::RefCell, convert::Infallible, rc::Rc};
+use rxrust::prelude::*;
 
 #[derive(Clone, Debug)]
 enum AppEvent {
@@ -8,6 +8,7 @@ enum AppEvent {
 }
 
 type AppBusInner = LocalSubject<'static, AppEvent, Infallible>;
+type AppEventStream = LocalBoxedObservableClone<'static, AppEvent, Infallible>;
 
 #[derive(Clone)]
 struct EventBus {
@@ -26,29 +27,49 @@ impl EventBus {
         subject.next(event);
     }
 
+    fn events(&self) -> AppEventStream {
+        self.inner.clone().box_it_clone()
+    }
+
     fn subscribe<F>(&self, handler: F) -> impl Subscription + use<F>
-    where
+where
         F: FnMut(AppEvent) + 'static,
     {
-        self.inner.clone().subscribe(handler)
+        self.events().subscribe(handler)
     }
 }
 
-struct Editor {
-    bus: EventBus,
+struct SaveStats {
+    successful_saves: Rc<RefCell<u32>>,
+    _subscription: SubscriptionGuard<BoxedSubscription>,
 }
 
-impl Editor {
+impl SaveStats {
     fn new(bus: EventBus) -> Self {
-        Self { bus }
+        let successful_saves = Rc::new(RefCell::new(0));
+        let successful_saves_for_handler = successful_saves.clone();
+
+        let subscription = bus
+            .events()
+            .filter_map(|event| match event {
+                AppEvent::SaveFinished { ok: true } => Some(1u32),
+                _ => None,
+            })
+            .scan(0u32, |count, inc| count + inc)
+            .subscribe(move |count| {
+                *successful_saves_for_handler.borrow_mut() = count;
+            })
+            .into_boxed()
+            .unsubscribe_when_dropped();
+
+        Self {
+            successful_saves,
+            _subscription: subscription,
+        }
     }
 
-    fn request_save(&self) {
-        self.bus.publish(AppEvent::SaveRequested);
-    }
-
-    fn finish_save(&self, ok: bool) {
-        self.bus.publish(AppEvent::SaveFinished { ok });
+    fn current(&self) -> u32 {
+        *self.successful_saves.borrow()
     }
 }
 
@@ -88,13 +109,16 @@ impl StatusPanel {
 
 fn main() {
     let bus = EventBus::new();
-
-    let editor = Editor::new(bus.clone());
+    let stats = SaveStats::new(bus.clone());
     let status_panel = StatusPanel::new(bus.clone());
 
-    editor.request_save();
+    bus.publish(AppEvent::SaveRequested);
     status_panel.render();
+    bus.publish(AppEvent::SaveFinished { ok: true });
+    status_panel.render();
+    bus.publish(AppEvent::SaveFinished { ok: false });
+    status_panel.render();
+    bus.publish(AppEvent::SaveFinished { ok: true });
 
-    editor.finish_save(true);
-    status_panel.render();
+    assert_eq!(stats.current(), 2);
 }
