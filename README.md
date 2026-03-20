@@ -2,11 +2,11 @@
 
 A simple, agnostic reactive extensions event bus utilising [rxRust](https://github.com/rxRust/rxRust) under the hood.
 
-- Events are just a generic type, implement them however you wish
+- Events are just a generic user-supplied type - implement however you wish
 - Validate and reject invalid events
-- Validation is a generic function, implement it according to your event design
-- Single-threaded `LocalEventBus` and thread-safe `SharedEventBus` using the equivalent rxRust `Local` and `Shared` contexts
-- No channels! Events are published to an rxRust Observable which you can filter accordingly (or apply any other rxRust operator)
+- Validation is a generic user-defined function - implement according to the event design
+- Single-threaded `LocalEventBus` and thread-safe `SharedEventBus` variants using the equivalent rxRust `Local` and `Shared` contexts
+- No channels! Events are published to an rxRust Observable which can be filtered accordingly (or apply any other rxRust operator)
 
 *Note: this library uses rxRust v1.0.0-rc3. This has much better reactive extension coverage relative to the latest stable version v0.15.0 published in 2021.*
 
