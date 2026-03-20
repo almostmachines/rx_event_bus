@@ -7,7 +7,7 @@ edition = "2024"
 rxrust = "1.0.0-rc.3"
 
 [[example]]
-name = "example1"
+name = "local_event_bus"
 
 [[example]]
-name = "example2"
+name = "shared_event_bus"
