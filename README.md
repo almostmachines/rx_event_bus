@@ -10,6 +10,12 @@ A simple, agnostic reactive extensions event bus utilising [rxRust](https://gith
 
 *Note: this library uses rxRust v1.0.0-rc3. This has much better reactive extension coverage relative to the latest stable version v0.15.0 published in 2021.*
 
+## Installation
+
+```shell
+cargo add rx_event_bus
+````
+
 ## Single-threaded example
 
 ```rust
