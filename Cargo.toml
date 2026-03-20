@@ -8,3 +8,6 @@ rxrust = "1.0.0-rc.3"
 
 [[example]]
 name = "example1"
+
+[[example]]
+name = "example2"
