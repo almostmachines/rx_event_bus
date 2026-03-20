@@ -433,7 +433,7 @@ checksum = "e5ff0cc5e135c8870a775d3320910cd9b564ec036b4dc0b8741629020be63f01"
 
 [[package]]
 name = "rx_event_bus"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cargo-llvm-cov",
  "rxrust",
