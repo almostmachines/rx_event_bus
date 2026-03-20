@@ -1,5 +1,13 @@
 [package]
+authors = "John King <jk@almostmachines.dev"
+categories = ["asynchronous"]
+description = "A simple, agnostic reactive extensions event bus utilising rxRust under the hood."
+homepage = "https://github.com/almostmachines/rx_event_bus"
+keywords = ["rx", "reactivex", "frp", "async", "observables", "events", "event bus"]
+license = "MIT"
 name = "rx_event_bus"
+readme = "README.md"
+repository = "https://github.com/almostmachines/rx_event_bus"
 version = "0.1.0"
 edition = "2024"
 
