@@ -56,14 +56,8 @@ mod tests {
 
     #[derive(Clone, Debug, PartialEq)]
     enum Event {
-        InfoEvent {
-            published_on: u32,
-            data: String,
-        },
-        ErrorEvent {
-            published_on: u32,
-            data: String,
-        },
+        InfoEvent { published_on: u32, data: String },
+        ErrorEvent { published_on: u32, data: String },
     }
 
     #[derive(Clone, Debug, PartialEq)]
@@ -74,8 +68,9 @@ mod tests {
 
     fn validate_event(event: Event) -> Result<Event, EventError> {
         let (published_on, data) = match &event {
-            Event::InfoEvent { published_on, data }
-            | Event::ErrorEvent { published_on, data } => (published_on, data),
+            Event::InfoEvent { published_on, data } | Event::ErrorEvent { published_on, data } => {
+                (published_on, data)
+            }
         };
 
         if *published_on > 0 {
@@ -92,7 +87,10 @@ mod tests {
     #[test]
     fn test_invalid_event_returns_err() {
         let event_bus = LocalEventBus::new(validate_event);
-        let event = Event::InfoEvent { published_on: 15, data: String::from("event") };
+        let event = Event::InfoEvent {
+            published_on: 15,
+            data: String::from("event"),
+        };
         let result = event_bus.publish(event);
 
         assert_eq!(result, Err(EventError::EventAlreadyPublished));
@@ -101,7 +99,10 @@ mod tests {
     #[test]
     fn test_invalid_event_not_published() {
         let event_bus = LocalEventBus::new(validate_event);
-        let event = Event::InfoEvent { published_on: 15, data: String::from("event") };
+        let event = Event::InfoEvent {
+            published_on: 15,
+            data: String::from("event"),
+        };
         let events: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events_clone = events.clone();
 
@@ -115,7 +116,10 @@ mod tests {
     #[test]
     fn test_valid_event_returns_ok() {
         let event_bus = LocalEventBus::new(validate_event);
-        let event = Event::InfoEvent { published_on: 0, data: String::from("event") };
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
         let event_clone = event.clone();
         let result = event_bus.publish(event);
 
@@ -125,7 +129,10 @@ mod tests {
     #[test]
     fn test_valid_event_is_received_by_subscriber() {
         let event_bus = LocalEventBus::new(validate_event);
-        let event = Event::InfoEvent { published_on: 0, data: String::from("event") };
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
         let events: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events_clone = events.clone();
 
@@ -142,9 +149,15 @@ mod tests {
         use std::cell::RefCell;
 
         let event_bus = LocalEventBus::new(validate_event);
-        let event1 = Event::InfoEvent { published_on: 0, data: String::from("event 1") };
+        let event1 = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event 1"),
+        };
         let event1_clone = event1.clone();
-        let event2 = Event::ErrorEvent { published_on: 0, data: String::from("event 2") };
+        let event2 = Event::ErrorEvent {
+            published_on: 0,
+            data: String::from("event 2"),
+        };
         let event2_clone = event2.clone();
         let events: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events_clone = events.clone();
@@ -164,12 +177,17 @@ mod tests {
         use std::cell::RefCell;
 
         let event_bus = LocalEventBus::new(validate_event);
-        let event = Event::InfoEvent { published_on: 0, data: String::from("event") };
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
         let event_clone = event.clone();
         let events: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events_clone = events.clone();
 
-        event_bus.events().subscribe(move |e| events_clone.borrow_mut().push(e));
+        event_bus
+            .events()
+            .subscribe(move |e| events_clone.borrow_mut().push(e));
 
         let _ = event_bus.publish(event);
 
@@ -182,14 +200,22 @@ mod tests {
         use std::cell::RefCell;
 
         let event_bus = LocalEventBus::new(validate_event);
-        let event1 = Event::InfoEvent { published_on: 0, data: String::from("event 1") };
-        let event2 = Event::ErrorEvent { published_on: 0, data: String::from("event 2") };
+        let event1 = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event 1"),
+        };
+        let event2 = Event::ErrorEvent {
+            published_on: 0,
+            data: String::from("event 2"),
+        };
         let event1_clone = event1.clone();
         let event2_clone = event2.clone();
         let events: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events_clone = events.clone();
 
-        event_bus.events().subscribe(move |e| events_clone.borrow_mut().push(e));
+        event_bus
+            .events()
+            .subscribe(move |e| events_clone.borrow_mut().push(e));
 
         let _ = event_bus.publish(event1);
         let _ = event_bus.publish(event2);
@@ -202,7 +228,10 @@ mod tests {
     #[test]
     fn test_event_is_received_by_multiple_subscribers() {
         let event_bus = LocalEventBus::new(validate_event);
-        let event = Event::InfoEvent { published_on: 0, data: String::from("event") };
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
         let events1: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events2: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events1_clone = events1.clone();
@@ -222,7 +251,10 @@ mod tests {
     #[test]
     fn test_events_published_prior_to_subscription_not_received() {
         let event_bus = LocalEventBus::new(validate_event);
-        let event = Event::InfoEvent { published_on: 0, data: String::from("event") };
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
         let events: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let events_clone = events.clone();
         let _ = event_bus.publish(event.clone());
