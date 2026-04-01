@@ -16,6 +16,68 @@ A simple, agnostic reactive extensions event bus utilising [rxRust](https://gith
 cargo add rx_event_bus
 ````
 
+## Sharing the event bus
+
+Both `LocalEventBus` and `SharedEventBus` are designed to be shared by cloning. Cloning is cheap (just reference count bumps) and all clones share the same underlying event stream — publishing on one clone delivers events to subscribers on any other.
+
+### Passing to structs
+
+Clone the bus and pass it to any struct that needs to publish or subscribe:
+
+```rust
+use rx_event_bus::LocalEventBus;
+
+struct Producer {
+    bus: LocalEventBus<MyEvent, MyError>,
+}
+
+impl Producer {
+    fn do_work(&self) {
+        self.bus.publish(MyEvent::Something).unwrap();
+    }
+}
+
+struct Consumer {
+    bus: LocalEventBus<MyEvent, MyError>,
+}
+
+impl Consumer {
+    fn listen(&self) {
+        self.bus.subscribe(|event| {
+            println!("{:?}", event);
+        });
+    }
+}
+
+let bus = LocalEventBus::new(validate);
+let producer = Producer { bus: bus.clone() };
+let consumer = Consumer { bus: bus.clone() };
+
+consumer.listen();
+producer.do_work(); // consumer receives the event
+```
+
+### Passing to functions
+
+```rust
+fn setup_logging(bus: &LocalEventBus<MyEvent, MyError>) {
+    bus.subscribe(|event| {
+        println!("[log] {:?}", event);
+    });
+}
+
+let bus = LocalEventBus::new(validate);
+setup_logging(&bus);
+bus.publish(MyEvent::Something).unwrap(); // logger receives the event
+```
+
+### Choosing between Local and Shared
+
+- **`LocalEventBus`** — uses `Rc` internally, so all clones must stay on the same thread. Use this when your application is single-threaded or all publishers and subscribers live on one thread.
+- **`SharedEventBus`** — uses `Arc` internally and requires `Send` bounds, so clones can be sent across threads. Use this when you need to publish or subscribe from multiple threads.
+
+The API is identical for both — the only difference is the thread-safety guarantees, so switching between them requires minimal code changes.
+
 ## Single-threaded example
 
 ```rust
