@@ -6,7 +6,8 @@ A simple, agnostic reactive extensions event bus utilising [rxRust](https://gith
 - Validate and reject invalid events
 - Validation is a generic user-defined function - implement according to the event design
 - Single-threaded `LocalEventBus` and thread-safe `SharedEventBus` variants using the equivalent rxRust `Local` and `Shared` contexts
-- No channels! Events are published to an rxRust Observable which can be filtered accordingly (or apply any other rxRust operator)
+- Async subscription execution
+- No channels! The event stream is an rxRust Observable that can be filtered accordingly
 
 *Note: this library uses rxRust v1.0.0-rc3. This has much better reactive extension coverage relative to the latest stable version v0.15.0 published in 2021.*
 
@@ -78,7 +79,7 @@ bus.publish(MyEvent::Something).unwrap(); // logger receives the event
 
 The API is identical for both — the only difference is the thread-safety guarantees, so switching between them requires minimal code changes.
 
-## Single-threaded example
+## Single-threaded LocalEventBus
 
 ```rust
 use rx_event_bus::LocalEventBus;
@@ -157,7 +158,7 @@ fn main() {
 }
 ```
 
-## Multi-threaded example
+## Multi-threaded SharedEventBus
 
 ```rust
 use std::sync::{Arc, Mutex};
@@ -251,5 +252,48 @@ fn main() {
     // Show collected events
     let collected = events.lock().unwrap();
     println!("\nCollected {} events total.", collected.len());
+}
+```
+
+## Async subscriptions
+
+By default, `publish()` calls each subscriber synchronously — if a subscriber does heavy work, it blocks the publisher and other subscribers. `SharedEventBus` provides async variants that use rxRust's `observe_on(SharedScheduler)` to dispatch subscriber execution to the tokio thread pool, so `publish()` returns immediately.
+
+- **`events_async()`** — like `events()`, but emissions are observed on the `SharedScheduler`. Chain additional rxRust operators before subscribing as usual.
+- **`subscribe_async(handler)`** — convenience for `events_async().subscribe(handler)`.
+
+These require a tokio runtime to be active (e.g. `#[tokio::main]`).
+
+**WASM note:** On `wasm32` targets, `SharedScheduler` falls back to `spawn_local` (single-threaded) since WASM does not support OS threads. The `Send` bounds are still enforced at compile time for portability, but subscribers will run on the same thread as the publisher. This means `events_async()` and `subscribe_async()` will still work, but will not provide the non-blocking benefit — heavy subscribers will still block `publish()` just as with the synchronous methods. If you are targeting WASM exclusively, prefer `LocalEventBus` with the synchronous API to avoid the unnecessary `Send` overhead.
+
+```rust
+use rx_event_bus::SharedEventBus;
+use rxrust::Observable;
+
+#[tokio::main]
+async fn main() {
+    let bus = SharedEventBus::new(|event: String| {
+        if event.is_empty() { Err("empty") } else { Ok(event) }
+    });
+
+    // This subscriber runs on the tokio thread pool — publish() won't block.
+    let _sub = bus.subscribe_async(|event| {
+        std::thread::sleep(std::time::Duration::from_secs(5)); // heavy work
+        println!("Processed: {}", event);
+    });
+
+    // You can also use events_async() with operators:
+    let _sub2 = bus
+        .events_async()
+        .filter(|e: &String| e.starts_with("important"))
+        .subscribe(|event| {
+            println!("Filtered: {}", event);
+        });
+
+    // Returns immediately — subscribers run in the background.
+    bus.publish("important update".into()).unwrap();
+
+    // Give background tasks time to complete.
+    tokio::time::sleep(std::time::Duration::from_secs(6)).await;
 }
 ```

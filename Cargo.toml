@@ -22,3 +22,4 @@ name = "shared_event_bus"
 
 [dev-dependencies]
 cargo-llvm-cov = "0.8.5"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }

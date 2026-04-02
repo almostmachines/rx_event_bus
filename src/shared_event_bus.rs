@@ -1,8 +1,8 @@
 use std::{convert::Infallible, sync::Arc};
 
 use rxrust::{
-    Observable, ObservableFactory, Observer, Shared, SharedBoxedObservableClone, SharedSubject,
-    Subscription,
+    Observable, ObservableFactory, Observer, Shared, SharedBoxedObservableClone, SharedScheduler,
+    SharedSubject, Subscription,
 };
 
 type SharedEventBusInner<E> = SharedSubject<'static, E, Infallible>;
@@ -46,6 +46,20 @@ impl<E: Clone + Send + 'static, V> SharedEventBus<E, V> {
         S: FnMut(E) + Send + 'static,
     {
         self.events().subscribe(handler)
+    }
+
+    pub fn events_async(&self) -> EventStream<E> {
+        self.inner
+            .clone()
+            .observe_on(SharedScheduler)
+            .box_it_clone()
+    }
+
+    pub fn subscribe_async<S>(&self, handler: S) -> impl Subscription + use<E, V, S>
+    where
+        S: FnMut(E) + Send + 'static,
+    {
+        self.events_async().subscribe(handler)
     }
 }
 
@@ -322,5 +336,76 @@ mod tests {
         let events = events.lock().unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0], event);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test]
+    async fn test_events_async_delivers_event() {
+        let event_bus = SharedEventBus::new(validate_event);
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
+        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
+        let events_clone = events.clone();
+
+        let _subscription = event_bus
+            .events_async()
+            .subscribe(move |e| events_clone.lock().unwrap().push(e));
+
+        let _ = event_bus.publish(event.clone());
+
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let events = events.lock().unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0], event);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test]
+    async fn test_subscribe_async_delivers_event() {
+        let event_bus = SharedEventBus::new(validate_event);
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
+        let events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
+        let events_clone = events.clone();
+
+        let _subscription =
+            event_bus.subscribe_async(move |e| events_clone.lock().unwrap().push(e));
+
+        let _ = event_bus.publish(event.clone());
+
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let events = events.lock().unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0], event);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test]
+    async fn test_subscribe_async_does_not_block_publisher() {
+        let event_bus = SharedEventBus::new(validate_event);
+        let event = Event::InfoEvent {
+            published_on: 0,
+            data: String::from("event"),
+        };
+
+        let _subscription = event_bus.subscribe_async(move |_e| {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        });
+
+        let start = std::time::Instant::now();
+        let _ = event_bus.publish(event);
+        let elapsed = start.elapsed();
+
+        assert!(
+            elapsed < std::time::Duration::from_millis(500),
+            "publish() took {:?}, expected < 500ms (subscriber should run on background thread)",
+            elapsed
+        );
     }
 }
