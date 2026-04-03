@@ -6,13 +6,13 @@ use rxrust::{
 };
 
 type SharedEventBusInner<E> = SharedSubject<'static, E, Infallible>;
-type EventStream<E> = SharedBoxedObservableClone<'static, E, Infallible>;
-type EventValidator<E, V> = Arc<dyn Fn(E) -> Result<E, V> + Send + Sync + 'static>;
+type SharedEventStream<E> = SharedBoxedObservableClone<'static, E, Infallible>;
+type SharedEventValidator<E, V> = Arc<dyn Fn(E) -> Result<E, V> + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct SharedEventBus<E, V> {
     inner: SharedEventBusInner<E>,
-    validate: EventValidator<E, V>,
+    validate: SharedEventValidator<E, V>,
 }
 
 impl<E: Clone + Send + 'static, V> SharedEventBus<E, V> {
@@ -37,7 +37,7 @@ impl<E: Clone + Send + 'static, V> SharedEventBus<E, V> {
         validated
     }
 
-    pub fn events(&self) -> EventStream<E> {
+    pub fn events(&self) -> SharedEventStream<E> {
         self.inner.clone().box_it_clone()
     }
 
@@ -48,7 +48,7 @@ impl<E: Clone + Send + 'static, V> SharedEventBus<E, V> {
         self.events().subscribe(handler)
     }
 
-    pub fn events_async(&self) -> EventStream<E> {
+    pub fn events_async(&self) -> SharedEventStream<E> {
         self.inner
             .clone()
             .observe_on(SharedScheduler)

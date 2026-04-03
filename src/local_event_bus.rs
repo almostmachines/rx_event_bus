@@ -6,13 +6,13 @@ use rxrust::{
 };
 
 type LocalEventBusInner<E> = LocalSubject<'static, E, Infallible>;
-type EventStream<E> = LocalBoxedObservableClone<'static, E, Infallible>;
-type EventValidator<E, V> = Rc<dyn Fn(E) -> Result<E, V> + 'static>;
+type LocalEventStream<E> = LocalBoxedObservableClone<'static, E, Infallible>;
+type LocalEventValidator<E, V> = Rc<dyn Fn(E) -> Result<E, V> + 'static>;
 
 #[derive(Clone)]
 pub struct LocalEventBus<E, V> {
     inner: LocalEventBusInner<E>,
-    validate: EventValidator<E, V>,
+    validate: LocalEventValidator<E, V>,
 }
 
 impl<E: Clone + 'static, V> LocalEventBus<E, V> {
@@ -37,7 +37,7 @@ impl<E: Clone + 'static, V> LocalEventBus<E, V> {
         validated
     }
 
-    pub fn events(&self) -> EventStream<E> {
+    pub fn events(&self) -> LocalEventStream<E> {
         self.inner.clone().box_it_clone()
     }
 
