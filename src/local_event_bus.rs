@@ -5,9 +5,9 @@ use rxrust::{
     Subscription,
 };
 
-type LocalEventBusInner<E> = LocalSubject<'static, E, Infallible>;
-type LocalEventStream<E> = LocalBoxedObservableClone<'static, E, Infallible>;
-type LocalEventValidator<E, V> = Rc<dyn Fn(E) -> Result<E, V> + 'static>;
+pub type LocalEventBusInner<E> = LocalSubject<'static, E, Infallible>;
+pub type LocalEventStream<E> = LocalBoxedObservableClone<'static, E, Infallible>;
+pub type LocalEventValidator<E, V> = Rc<dyn Fn(E) -> Result<E, V> + 'static>;
 
 #[derive(Clone)]
 pub struct LocalEventBus<E, V> {

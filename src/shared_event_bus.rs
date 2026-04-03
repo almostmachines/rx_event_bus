@@ -5,9 +5,9 @@ use rxrust::{
     SharedSubject, Subscription,
 };
 
-type SharedEventBusInner<E> = SharedSubject<'static, E, Infallible>;
-type SharedEventStream<E> = SharedBoxedObservableClone<'static, E, Infallible>;
-type SharedEventValidator<E, V> = Arc<dyn Fn(E) -> Result<E, V> + Send + Sync + 'static>;
+pub type SharedEventBusInner<E> = SharedSubject<'static, E, Infallible>;
+pub type SharedEventStream<E> = SharedBoxedObservableClone<'static, E, Infallible>;
+pub type SharedEventValidator<E, V> = Arc<dyn Fn(E) -> Result<E, V> + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct SharedEventBus<E, V> {
